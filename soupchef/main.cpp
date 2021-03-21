@@ -15,6 +15,55 @@ void printDCEL(DCEL & D);
 bool testDCEL(DCEL& D);
 
 
+
+/*
+  General helper functions
+*/
+
+// Get a vector of all half edges forming the face
+std::vector<HalfEdge*> faceEdges(Face* f) {
+    std::vector<HalfEdge*> halfEdges;
+    HalfEdge* e = f->exteriorEdge;
+    const HalfEdge* e_start = e;
+    do {
+        halfEdges.push_back(e);
+        e = e->next;
+    } while (e_start != e);
+    return halfEdges;
+}
+
+// Flip a single edges direction
+void flipEdge(HalfEdge* e) {
+    Vertex* origin = e->origin;
+    HalfEdge* prev = e->prev;
+    e->origin = e->destination;
+    e->origin = origin;
+    e->prev = e->next;
+    e->next = prev;
+}
+
+// Flip all edges of the face
+void flipFace(Face* f) {
+    for (auto e : faceEdges(f)) {
+        flipEdge(e);
+    }
+}
+
+
+void orientFaces(Face* f) {
+
+
+}
+
+
+
+
+
+
+
+
+
+
 /* 
   Example functions that you could implement. But you are 
   free to organise/modify the code however you want.
