@@ -17,12 +17,13 @@
   General helper functions
 */
 
-// Get a vector of all half edges forming the face
+
+// Get a vector with all half edges forming the face
 std::vector<HalfEdge*> faceEdges(Face* f) {
     std::vector<HalfEdge*> halfEdges;
+    
     HalfEdge* e = f->exteriorEdge;
     const HalfEdge* e_start = e;
-    
     do {
         halfEdges.push_back(e);
         e = e->next;
@@ -104,6 +105,7 @@ bool intersects(const Point& orig, const Point& dest, const Point& v0, const Poi
         && is_opposite(v1, v2, orig, dest, v0)
         );
 }
+
 bool intersects(const Point& orig, const Point& dest, const Face* f)
 {
     Vertex* v_0 = f->exteriorEdge->origin;
@@ -173,10 +175,10 @@ Point face_center(Face* f)
 }
 
 
-Point normal_ray(Face* f, double multiple) {
+Point normal_ray(Face* f, double length) {
     auto f_norm = normal_vect(f);
     auto f_center = face_center(f);
-    Point ray_dest = f_center + f_norm * multiple;
+    Point ray_dest = f_center + f_norm * length;
     return ray_dest;
 }
 
@@ -422,6 +424,7 @@ bool exportCityJSON(DCEL& D, std::map<Face*, int>& facemap, const char* file_out
             "   \"geometry\":"
             "   [{"
             "       \"type\": \"MultiSurface\","
+            "       \"lod\": 2,"
             "       \"boundaries\": [";
 
         // Add surface for each face
@@ -445,7 +448,7 @@ bool exportCityJSON(DCEL& D, std::map<Face*, int>& facemap, const char* file_out
                 file << v_index;
                 e = e->next;
                 if (e == start) break;
-                file << ", ";
+                file << ",";
             }
             file << "]";
 
@@ -470,26 +473,26 @@ bool exportCityJSON(DCEL& D, std::map<Face*, int>& facemap, const char* file_out
 
         // Close geometry and the whole building object
         file <<
-            "       ]"  // boundaries
-            "   }]"     // geometry
-            "}";        // Building
+                    "]"     // boundaries
+                "}]"        // geometry
+            "}";            // Building
     }
     // Close CityObjects and start with "vertices"
     file <<
         "},"
-        "\"vertices\": [";
+        "\"vertices\":[";
 
     char buffer[64];
     for (int i = 0; i < rvmap.size(); i++) {
         if (i > 0) file << ","; // Add comma in between
         Vertex* v = rvmap[i];
-        sprintf(buffer, "[%f, %f, %f]",
+        sprintf(buffer, "[%f,%f,%f]",
                 v->x, v->y, v->z);
         file << buffer;
     }
 
     // Close "vertices"
-    file << "   ]";
+    file << "]";
     // Close the CityJSON object and the file itself
     file << "}";
     file.close();
