@@ -45,7 +45,7 @@ bool importOBJ(DCEL & D, const char *file_in) {
         {
             std::istringstream coords(line.substr(2));
             double x, y, z;    coords >> x; coords >> y; coords >> z;
-            
+
             Vertex* v = D.createVertex(x, y, z);
             vmap.insert({ v_index, v });
             v_index++;
@@ -103,39 +103,138 @@ bool importOBJ(DCEL & D, const char *file_in) {
 
     return true;
 }
+
+
 // 2.
 bool groupTriangles(DCEL & D) {
   // to do
 
     return true;
 }
+
+
 // 3.
 bool orientMeshes(DCEL & D) {
   // to do
 
     return true;
 }
+
+
 // 4.
 bool mergeCoPlanarFaces(DCEL & D) {
   // to do
 
     return true;
 }
+
+
 // 5.
 bool exportCityJSON(DCEL & D, const char *file_out) {
-  // to do
+    
+    // Create map of DCEL Vertex pointers to their IDs for export
+    // CityJSON vertex IDs start at 0
+    std::map<Vertex*, int> vmap;
+    int v_index = 0;
+    for (const auto& v : D.vertices()) {
+        vmap.insert({ v.get(), v_index });
+        v_index++;
+    }
+
+    // Open the file, write a generic CityJSON header
+    std::cout << "Writing to file: " << file_out << "\n";
+    std::ofstream file;
+    file.open(file_out);
+    file <<
+        "{"
+        "   \"type\":\"CityJSON\","
+        "   \"version\":\"1.0\","
+        "   \"CityObjects\":"
+            "{";
+
+    // Add CityObject for each separate mesh
+    // For now just a single "building" to test
+    int n_buildings = 1;
+    for (int i = 0; i < n_buildings; i++) {
+
+        file <<
+            "\"Building " << i << "\": {"
+            "   \"type\": \"Building\","
+            "   \"attributes\": {},"
+            "   \"geometry\":"
+            "   [{"
+            "       \"type\": \"MultiSurface\","
+            "       \"boundaries\": [";
+
+        // Add surface for each face
+        for (const auto& f : D.faces()) {
+            file << "[";
+            
+            // Exterior surface boundary
+            file << "[";
+            HalfEdge* e = f->exteriorEdge;
+            const HalfEdge* start = e;
+            while (true) {
+                int v_index = vmap[e->origin];
+                file << v_index;
+                e = e->next;
+                if (e == start) break;
+                file << ", ";
+            }
+            file << "]";
+
+            // Interior surface boundaries
+            for (const auto& hole : f->holes)
+            {
+                file << ",[";
+                HalfEdge* e = hole;
+                const HalfEdge* start = e;
+                while (true) {
+                    int v_index = vmap[e->origin];
+                    file << v_index;
+                    e = e->next;
+                    if (e == start) break;
+                    file << ",";
+                }
+                file << "]";
+            }
+
+            file << "],";   // end one surface, get another
+        }
+
+        // Close geometry and the whole building object
+        file <<
+            "       ]"  // boundaries
+            "   }]"     // geometry
+            "},";       // Building
+    }
+    // Close CityObjects and start with "vertices"
+    file <<
+        "},"
+        "\"vertices\": [";
+
+    char buffer[64];
+    for (const auto& v_ : vmap) {
+        Vertex* v = v_.first;
+        sprintf(buffer, "[%f, %f, %f],",
+                v->x, v->y, v->z);
+        file << buffer;
+    }
+
+    // Close "vertices"
+    file << "   ]";
+    // Close the CityJSON object and the file itself
+    file << "}";
+    file.close();
 
     return true;
 }
 
 
+
 int main(int argc, const char * argv[]) {
   const char *file_in = "cube_soup.obj";
   const char *file_out = "cube_out.json";
-
-  // Demonstrate how to use the DCEL to get you started (see function implementation below)
-  // you can remove this from the final code
-  // DemoDCEL();
 
   // create an empty DCEL
   DCEL D;
@@ -176,7 +275,6 @@ int main(int argc, const char * argv[]) {
       std::cerr << "File export failed.\n";
       return 5;
   };
-
 
   return 0;
 }
