@@ -4,6 +4,7 @@
 #include <vector>
 #include <list>
 #include <map>
+#include <set>
 #include <unordered_map>
 #include <stack>
 #include <string>
@@ -191,10 +192,16 @@ bool importOBJ(DCEL & D, const char *file_in) {
 
 
 // 2.
-void groupTriangles(DCEL & D) //, std::unordered_map< HalfEdge*, std::vector<int> > &hemap,  std::unordered_map< Face*, int> &facemap)
-{
-    /*
+bool groupTriangles(DCEL & D) {
     // to do
+
+
+    return true;
+}
+
+    /*
+    * //, std::unordered_map< HalfEdge*, std::vector<int> > &hemap,  std::unordered_map< Face*, int> &facemap)
+    
     //std::vector<int> meshes;
     // create a hashmap with the halfedge and an integer
     std::unordered_map < HalfEdge*, int> meshmap;
@@ -275,49 +282,40 @@ void groupTriangles(DCEL & D) //, std::unordered_map< HalfEdge*, std::vector<int
         }
     }
     */
- }
+    /*
+    bool groupTriangles(DCEL & D) {
+        // to do
+        const auto& vertices = D.vertices();
+        const auto& halfEdges = D.halfEdges();
+        const auto& faces = D.faces();
+        std::vector<double> norml, norm2;
+        std::cout<< "printing dfaces" <<D.faces().begin()->get()<<'\n';
+        for (const auto &f : faces)
+        {
+            // take vertices from face
+            HalfEdge* currentedge = f->exteriorEdge;
+            HalfEdge* nxtedge = f->exteriorEdge->next;
+            HalfEdge* nxtnxtedge = f->exteriorEdge->prev;
 
-/*
-bool groupTriangles(DCEL & D) {
-    // to do
-    const auto& vertices = D.vertices();
-    const auto& halfEdges = D.halfEdges();
-    const auto& faces = D.faces();
-    std::vector<double> norml, norm2;
-    std::cout<< "printing dfaces" <<D.faces().begin()->get()<<'\n';
-    for (const auto &f : faces)
-    {
-        // take vertices from face
-        HalfEdge* currentedge = f->exteriorEdge;
-        HalfEdge* nxtedge = f->exteriorEdge->next;
-        HalfEdge* nxtnxtedge = f->exteriorEdge->prev;
+            Vertex* v0 = currentedge->origin;
+            Vertex* v1 = currentedge->destination;
+            Vertex* v2 = nxtedge->destination;
+            //compute normal for this face
+            norml = normal_calc(v0,v1,v2);
 
-        Vertex* v0 = currentedge->origin;
-        Vertex* v1 = currentedge->destination;
-        Vertex* v2 = nxtedge->destination;
-        //compute normal for this face
-        norml = normal_calc(v0,v1,v2);
+            std::cout<<"incd \t"<<currentedge->incidentFace<<'\t'<<nxtedge->incidentFace<<'\t'<<nxtnxtedge->incidentFace<<'\n';
+            std::cout<<"twin \t"<<currentedge->twin->incidentFace<<'\t'<<nxtedge->twin->incidentFace<<'\t'<<nxtnxtedge->twin->incidentFace<<'\n';
+    //
+    //        Vertex* otherv0 = f->exteriorEdge->twin->origin;
+    //        Vertex* otherv1 = f->exteriorEdge->twin->destination;
+    //        Vertex* otherv2 = f->exteriorEdge->twin->next->destination;
+    //        norm2 = normal_calc(otherv0,otherv1,otherv2);
 
-        std::cout<<"incd \t"<<currentedge->incidentFace<<'\t'<<nxtedge->incidentFace<<'\t'<<nxtnxtedge->incidentFace<<'\n';
-        std::cout<<"twin \t"<<currentedge->twin->incidentFace<<'\t'<<nxtedge->twin->incidentFace<<'\t'<<nxtnxtedge->twin->incidentFace<<'\n';
-//
-//        Vertex* otherv0 = f->exteriorEdge->twin->origin;
-//        Vertex* otherv1 = f->exteriorEdge->twin->destination;
-//        Vertex* otherv2 = f->exteriorEdge->twin->next->destination;
-//        norm2 = normal_calc(otherv0,otherv1,otherv2);
-
-//        std::cout<<"n1 \t"<<norml.size()<<"\nn2 \t"<<norm2.size()<<'\n';
-    }
+    //        std::cout<<"n1 \t"<<norml.size()<<"\nn2 \t"<<norm2.size()<<'\n';
+        }
 
 
-
-    return true;
-}
-<<<<<<< HEAD
-*/
-=======
-
->>>>>>> 6831d9d9612067f4d9402704ae928b7146b9f36e
+    */
 
 // 3.
 bool orientMeshes(DCEL & D) {
@@ -455,7 +453,7 @@ bool exportCityJSON(DCEL & D, const char *file_out) {
 
 
 int main(int argc, const char * argv[]) {
-  const char *file_in = "E:\\TU_Delft\\yr_1\\q3\\GEO1004\\Assignment\\hw02\\GEO1004-hw2\\data\\cube_soup.obj";
+  const char *file_in = "cube_soup.obj";
   const char *file_out = "cube_out.json";
 
   // create an empty DCEL
