@@ -4,6 +4,8 @@
 #include <vector>
 #include <list>
 #include <map>
+#include <set>
+#include <stack>
 #include <string>
 
 
@@ -21,19 +23,21 @@ bool testDCEL(DCEL& D);
 */
 
 // Get a vector of all half edges forming the face
-std::vector<HalfEdge*> faceEdges(Face* f) {
+std::vector<HalfEdge*> faceEdges(Face*& f) {
     std::vector<HalfEdge*> halfEdges;
     HalfEdge* e = f->exteriorEdge;
     const HalfEdge* e_start = e;
+    
     do {
         halfEdges.push_back(e);
         e = e->next;
     } while (e_start != e);
+    
     return halfEdges;
 }
 
-// Flip a single edges direction
-void flipEdge(HalfEdge* e) {
+// Flip halfedges direction
+void flipEdge(HalfEdge*& e) {
     Vertex* origin = e->origin;
     HalfEdge* prev = e->prev;
     e->origin = e->destination;
@@ -42,25 +46,35 @@ void flipEdge(HalfEdge* e) {
     e->next = prev;
 }
 
-// Flip all edges of the face
-void flipFace(Face* f) {
+// Flip all halfedges of the face
+void flipFace(Face*& f) {
     for (auto e : faceEdges(f)) {
         flipEdge(e);
     }
 }
 
+void orientFaces(Face* face) {
 
-void orientFaces(Face* f) {
+    std::stack<Face*> stack;
+    std::set<Face*> visited;
+    stack.push(face);
 
+    while (!stack.empty()) 
+    {
+        Face* f = stack.top();
+        visited.insert(f);
+        stack.pop();
 
+        for (const auto e : faceEdges(f)) {
+            if (visited.count(e->twin->incidentFace) == 0) {
+                stack.push(e->twin->incidentFace);
+            }
+            if (e->origin == e->twin->origin) {
+                flipFace(e->twin->incidentFace);
+            }
+        }
+    }
 }
-
-
-
-
-
-
-
 
 
 
@@ -165,6 +179,11 @@ bool groupTriangles(DCEL & D) {
 // 3.
 bool orientMeshes(DCEL & D) {
   // to do
+
+    for (const auto& f : D.faces()) {
+        orientFaces(f.get());
+        break;
+    }
 
     return true;
 }
