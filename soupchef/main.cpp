@@ -160,6 +160,8 @@ bool exportCityJSON(DCEL & D, const char *file_out) {
     int n_buildings = 1;
     for (int i = 0; i < n_buildings; i++) {
 
+        if (i > 0) file << ","; // Add comma in between
+
         file <<
             "\"Building " << i << "\": {"
             "   \"type\": \"Building\","
@@ -170,7 +172,12 @@ bool exportCityJSON(DCEL & D, const char *file_out) {
             "       \"boundaries\": [";
 
         // Add surface for each face
+        bool first = true;
         for (const auto& f : D.faces()) {
+
+            if (!first) file << ","; // Add comma in between
+            first = false;
+
             file << "[";
             
             // Exterior surface boundary
@@ -202,14 +209,14 @@ bool exportCityJSON(DCEL & D, const char *file_out) {
                 file << "]";
             }
 
-            file << "],";   // end one surface, get another
+            file << "]";   // end one surface
         }
 
         // Close geometry and the whole building object
         file <<
             "       ]"  // boundaries
             "   }]"     // geometry
-            "},";       // Building
+            "}";        // Building
     }
     // Close CityObjects and start with "vertices"
     file <<
@@ -218,8 +225,9 @@ bool exportCityJSON(DCEL & D, const char *file_out) {
 
     char buffer[64];
     for (int i = 0; i < rvmap.size(); i++) {
+        if (i > 0) file << ","; // Add comma in between
         Vertex* v = rvmap[i];
-        sprintf(buffer, "[%f, %f, %f],",
+        sprintf(buffer, "[%f, %f, %f]",
                 v->x, v->y, v->z);
         file << buffer;
     }
