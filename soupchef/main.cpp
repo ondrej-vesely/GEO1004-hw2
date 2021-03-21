@@ -42,7 +42,7 @@ void flipEdge(HalfEdge* e) {
     Vertex* origin = e->origin;
     HalfEdge* prev = e->prev;
     e->origin = e->destination;
-    e->origin = origin;
+    e->destination = origin;
     e->prev = e->next;
     e->next = prev;
 }
@@ -71,7 +71,7 @@ void orientFaces(Face* face) {
             if (visited.count(e->twin->incidentFace) == 0) {
                 stack.push(e->twin->incidentFace);
                 visited.insert(f);
-                
+
                 if (e->origin == e->twin->origin) {
                     flipFace(e->twin->incidentFace);
                 }
@@ -245,9 +245,8 @@ bool groupTriangles(DCEL & D, std::map<Face*, int> & facemap) {
 bool orientMeshes(DCEL & D) {
   // to do
 
-    for (const auto& f : D.faces()) {
-        orientFaces(f.get());
-        break;
+    for (const auto& e : D.infiniteFace()->holes) {
+        orientFaces(e->incidentFace);
     }
 
     return true;
