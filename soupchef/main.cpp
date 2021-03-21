@@ -139,7 +139,8 @@ Point normal_vect(Vertex* v0, Vertex* v1, Vertex* v2)
     double vz = delx1 * dely2 - dely1  * delx2;
     
     // normalise vector
-    double retx = vx / sqrt(vx*vx + vy*vy + vz*vz), rety = vy/ sqrt(vx*vx + vy*vy + vz*vz),retz = vz / sqrt(vx*vx + vy*vy + vz*vz);
+    double length = sqrt(vx * vx + vy * vy + vz * vz);
+    double retx = vx / length, rety = length, retz = vz / length;
     
     return Point{retx, rety, retz};
 }
@@ -300,6 +301,8 @@ bool groupTriangles(DCEL & D, std::map<Face*, int> & facemap) {
             }
         }
 
+        if (done) break;
+
         // Add it to stack and infinite face holes
         stack.push(start);
         D.infiniteFace()->holes.push_back(start->exteriorEdge);
@@ -337,10 +340,10 @@ bool orientMeshes(DCEL & D, std::map<Face*, int>& facemap) {
 
         // Shoot a ray along the face normal
         Point ray_orig = face_center(first);
-        Point ray_dest = normal_ray(first, 10000);
+        Point ray_dest = normal_ray(first, 1000);
 
         // For each face in mesh check for intersection
-        // To find the furthes possible one
+        // to find the furthest intersection with the ray
         Face* best = first;
         double best_dist = 0;
         for (const auto& f : D.faces())
@@ -349,7 +352,7 @@ bool orientMeshes(DCEL & D, std::map<Face*, int>& facemap) {
             if (intersects(ray_orig, ray_dest, f.get()))
             {
                 Point center = face_center(f.get());
-                double dist = distance(center, ray_dest);
+                double dist = distance(center, ray_orig);
 
                 if (dist > best_dist) {
                     best = f.get();
@@ -410,7 +413,8 @@ bool exportCityJSON(DCEL& D, std::map<Face*, int>& facemap, const char* file_out
     // Add CityObject for each separate mesh
     // For now just a single "building" to test
     int n_buildings = D.infiniteFace()->holes.size();
-    for (int i = 1; i < n_buildings; i++) {
+    
+    for (int i = 1; i <= n_buildings; i++) {
 
         if (i > 1) file << ","; // Add comma in between
 
