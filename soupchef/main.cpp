@@ -104,7 +104,6 @@ bool intersects(const Point& orig, const Point& dest, const Point& v0, const Poi
         && is_opposite(v1, v2, orig, dest, v0)
         );
 }
-
 bool intersects(const Point& orig, const Point& dest, const Face* f)
 {
     Vertex* v_0 = f->exteriorEdge->origin;
@@ -116,27 +115,35 @@ bool intersects(const Point& orig, const Point& dest, const Face* f)
     return intersects(orig, dest, v0, v1, v2);
 }
 
+
+// Distance between points
+double distance(Point a, Point b) {
+    return sqrt((b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y) + (b.z - a.z) * (b.z - a.z));
+}
+
+
 // Get normal given 2 vertices
 Point normal_vect(Vertex* v0, Vertex* v1, Vertex* v2)
 {
-    double delx1 = v2->x - v0->x;
-    double dely1 = v2->y - v0->y;
-    double delz1 = v2->z - v0->z;
+    const Point a{
+        v2->x - v0->x,
+        v2->y - v0->y,
+        v2->z - v0->z
+    };
 
-    double delx2 = v1->x - v0->x;
-    double dely2 = v1->y - v0->y;
-    double delz2 = v1->z - v0->z;
+    const Point b{
+        v1->x - v0->x,
+        v1->y - v0->y,
+        v1->z - v0->z
+    };
 
-    // do a cross product
-    double vx = dely1 * delz2 - delz1  * dely2;
-    double vy = delz1 * delx2 - delx1  * delz2;
-    double vz = delx1 * dely2 - dely1  * delx2;
-    
+    Point cross = a.cross(b);
+
     // normalise vector
-    double length = sqrt(vx * vx + vy * vy + vz * vz);
-    double retx = vx / length, rety = length, retz = vz / length;
+    double len = distance(Point{ 0,0,0 }, cross);
+    cross = cross / len;
     
-    return Point{retx, rety, retz};
+    return cross;
 }
 
 Point normal_vect(Face* f)
@@ -145,11 +152,6 @@ Point normal_vect(Face* f)
     Vertex* v1 = f->exteriorEdge->next->origin;
     Vertex* v2 = f->exteriorEdge->prev->origin;
     return normal_vect(v0, v1, v2);
-}
-
-// Distance between points
-double distance(Point a, Point b) {
-    return sqrt((b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y) + (b.z - a.z) * (b.z - a.z));
 }
 
 
@@ -169,6 +171,7 @@ Point face_center(Face* f)
     Vertex* v2 = f->exteriorEdge->prev->origin;
     return face_center(v0, v1, v2);
 }
+
 
 Point normal_ray(Face* f, double multiple) {
     auto f_norm = normal_vect(f);
@@ -494,9 +497,12 @@ bool exportCityJSON(DCEL& D, std::map<Face*, int>& facemap, const char* file_out
     return true;
 }
 
+
+
 // forward declarations; these functions are given below main()
 void printDCEL(DCEL & D);
 bool testDCEL(DCEL& D);
+
 
 int main(int argc, const char* argv[]) {
 	const char* file_in = "bk_soup.obj";
