@@ -54,6 +54,7 @@ void flipFace(Face* f) {
     }
 }
 
+// Recursively orient all faces the same
 void orientFaces(Face* face) {
 
     std::stack<Face*> stack;
@@ -102,11 +103,8 @@ std::vector<double>  normal_calc(Vertex* v0, Vertex* v1, Vertex* v2)
 
 
 /*
-  Example functions that you could implement. But you are
-  free to organise/modify the code however you want.
-  After each function you should have a DCEL without invalid elements!
+  Main functions
 */
-
 
 // 1.
 bool importOBJ(DCEL & D, const char *file_in) {
@@ -196,11 +194,10 @@ bool importOBJ(DCEL & D, const char *file_in) {
 // 2.
 bool groupTriangles(DCEL & D, std::map<Face*, int> & facemap) {
 
-    // Keep track of visited / unvisited faces
-    std::map< Face*, int> visited;
+    // Keep track of visited (n) / unvisited (0) faces
     for (const auto & f : D.faces())
     {
-        visited.insert({ f.get(), 0 });
+        facemap.insert({ f.get(), 0 });
     }
 
     std::stack<Face*> stack;
@@ -212,7 +209,7 @@ bool groupTriangles(DCEL & D, std::map<Face*, int> & facemap) {
         
         // Check if there is some unvisited face
         Face* start;
-        for (auto& f : visited) {
+        for (auto& f : facemap) {
             if (f.second == 0) {
                 start = f.first;
                 done = false;
@@ -228,10 +225,10 @@ bool groupTriangles(DCEL & D, std::map<Face*, int> & facemap) {
         {
             Face* f = stack.top();
             stack.pop();
-            visited[f] = current_id;
+            facemap[f] = current_id;
 
             for (auto e : faceEdges(f)) {
-                if (visited[e->twin->incidentFace] == 0) {
+                if (facemap[e->twin->incidentFace] == 0) {
                     stack.push(e->twin->incidentFace);
                 }
             }
@@ -240,7 +237,6 @@ bool groupTriangles(DCEL & D, std::map<Face*, int> & facemap) {
         current_id++; 
     }
 
-    facemap = visited;
     return true;
 }
 
