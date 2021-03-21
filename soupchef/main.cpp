@@ -4,8 +4,6 @@
 #include <vector>
 #include <list>
 #include <map>
-#include <unordered_map>
-#include <stack>
 #include <string>
 
 
@@ -17,31 +15,60 @@ void printDCEL(DCEL & D);
 bool testDCEL(DCEL& D);
 
 
+
+/*
+  General helper functions
+*/
+
+// Get a vector of all half edges forming the face
+std::vector<HalfEdge*> faceEdges(Face* f) {
+    std::vector<HalfEdge*> halfEdges;
+    HalfEdge* e = f->exteriorEdge;
+    const HalfEdge* e_start = e;
+    do {
+        halfEdges.push_back(e);
+        e = e->next;
+    } while (e_start != e);
+    return halfEdges;
+}
+
+// Flip a single edges direction
+void flipEdge(HalfEdge* e) {
+    Vertex* origin = e->origin;
+    HalfEdge* prev = e->prev;
+    e->origin = e->destination;
+    e->origin = origin;
+    e->prev = e->next;
+    e->next = prev;
+}
+
+// Flip all edges of the face
+void flipFace(Face* f) {
+    for (auto e : faceEdges(f)) {
+        flipEdge(e);
+    }
+}
+
+
+void orientFaces(Face* f) {
+
+
+}
+
+
+
+
+
+
+
+
+
+
 /* 
   Example functions that you could implement. But you are 
   free to organise/modify the code however you want.
   After each function you should have a DCEL without invalid elements!
 */
-//get normal given 2 vertices
-std::vector<double>  normal_calc(Vertex* v0, Vertex* v1, Vertex* v2)
-{
-    double delx1 =v2->x - v0->x;
-    double dely1 = v2->y - v0->y;
-    double delz1 = v2->z - v0->z;
-
-    double delx2 =v1->x - v0->x;
-    double dely2 = v1->y - v0->y;
-    double delz2 = v1->z - v0->z;
-
-    //do a cross product
-    double vx = dely1 * delz2 - delz1  * dely2;
-    double vy = delz1 * delx2 - delx1  * delz2;
-    double vz = delx1 * dely2 - dely1  * delx2;
-//    normalise vector
-    double retx = vx / sqrt(vx*vx + vy*vy + vz*vz), rety = vy/ sqrt(vx*vx + vy*vy + vz*vz),retz = vz / sqrt(vx*vx + vy*vy + vz*vz);
-    return std::vector<double> {retx,rety,retz};
-}
-
 // 1.
 bool importOBJ(DCEL & D, const char *file_in) {
     
@@ -67,7 +94,7 @@ bool importOBJ(DCEL & D, const char *file_in) {
         {
             std::istringstream coords(line.substr(2));
             double x, y, z;    coords >> x; coords >> y; coords >> z;
-            
+
             Vertex* v = D.createVertex(x, y, z);
             vmap.insert({ v_index, v });
             v_index++;
@@ -125,130 +152,15 @@ bool importOBJ(DCEL & D, const char *file_in) {
 
     return true;
 }
+
+
 // 2.
-void groupTriangles(DCEL & D) //, std::unordered_map< HalfEdge*, std::vector<int> > &hemap,  std::unordered_map< Face*, int> &facemap)
-{
-    /*
-    // to do
-    //std::vector<int> meshes;
-    // create a hashmap with the halfedge and an integer
-    std::unordered_map < HalfEdge*, int> meshmap;
-
-
-    std::unordered_map<HalfEdge*, std::vector<int>> half_edge_map;
-    std::unordered_map<Face*, int> face_map;
-
-    for( auto & edge : half_edge_map)
-    {
-        meshmap.insert({edge.first ,0});
-    }
-
-    for( auto & f : face_map)
-    {
-        face_map.insert({f.first,0});
-    }
-
-    // buildings in .obj start at 1
-    int build_feature = 1; //building feature
-    bool edge_map_finish = false;
-    // Until edge map is filled, continue finding not-yet-assigned halfedges that belong to triangles, that belong to meshes
-    // Use stack tool to iterate through all edges of mesh
-    // Get a halfedge that has not been assigned to a mesh
-
-    while(edge_map_finish == false)
-    {
-        //get a halfedge that has not been assigned to a mesh
-        HalfEdge* edg;
-        std::unordered_map <HalfEdge*, int>::iterator iter = meshmap.begin();
-        while (iter != meshmap.end())
-        {
-            if (iter->second == 0)
-            {
-                edg = iter->first; //to push to stack
-            }
-            iter++;
-        } // end reading meshmap
-
-        //start the stack to go through all edges of a mesh
-        std::stack<HalfEdge*> stk;
-        stk.push(edg); // push to stack
-
-        // store the edge into the list of holes of the infinite face
-        D.infiniteFace()->holeshol.push_back(edg);
-        //traverse all the faces to get all meshes
-        while(!stk.empty())
-        {
-            HalfEdge* e = stk.top();
-            //std::cout << &e << std::endl;
-            stk.pop();
-            face_map[e->incidentFace] = build_feature;
-
-            HalfEdge* e_start = e;
-            do {
-                meshmap[e] = 1;
-                if(meshmap[e->twin] == 0)
-                {
-                    stk.push(e->twin);
-                }
-                e = e->next;
-            } while ( e_start!=e) ;
-        }
-        build_feature ++;
-        int ir =0;
-        // you stop when you traversed all the edges
-        for(auto c: meshmap)
-        {
-            if(c.second ==0)
-            {
-                ir ++;
-            }
-        }
-        // stop the loop, you have found all meshes
-        if(ir == 0)
-        {
-            edge_map_finish = true;
-        }
-    }
-    */
- }
-
-/*
 bool groupTriangles(DCEL & D) {
-    // to do
-    const auto& vertices = D.vertices();
-    const auto& halfEdges = D.halfEdges();
-    const auto& faces = D.faces();
-    std::vector<double> norml, norm2;
-    std::cout<< "printing dfaces" <<D.faces().begin()->get()<<'\n';
-    for (const auto &f : faces)
-    {
-        // take vertices from face
-        HalfEdge* currentedge = f->exteriorEdge;
-        HalfEdge* nxtedge = f->exteriorEdge->next;
-        HalfEdge* nxtnxtedge = f->exteriorEdge->prev;
-
-        Vertex* v0 = currentedge->origin;
-        Vertex* v1 = currentedge->destination;
-        Vertex* v2 = nxtedge->destination;
-        //compute normal for this face
-        norml = normal_calc(v0,v1,v2);
-
-        std::cout<<"incd \t"<<currentedge->incidentFace<<'\t'<<nxtedge->incidentFace<<'\t'<<nxtnxtedge->incidentFace<<'\n';
-        std::cout<<"twin \t"<<currentedge->twin->incidentFace<<'\t'<<nxtedge->twin->incidentFace<<'\t'<<nxtnxtedge->twin->incidentFace<<'\n';
-//
-//        Vertex* otherv0 = f->exteriorEdge->twin->origin;
-//        Vertex* otherv1 = f->exteriorEdge->twin->destination;
-//        Vertex* otherv2 = f->exteriorEdge->twin->next->destination;
-//        norm2 = normal_calc(otherv0,otherv1,otherv2);
-
-//        std::cout<<"n1 \t"<<norml.size()<<"\nn2 \t"<<norm2.size()<<'\n';
-    }
-
-
+  // to do
 
     return true;
 }
-*/
+
 
 // 3.
 bool orientMeshes(DCEL & D) {
@@ -256,27 +168,133 @@ bool orientMeshes(DCEL & D) {
 
     return true;
 }
+
+
 // 4.
 bool mergeCoPlanarFaces(DCEL & D) {
   // to do
 
     return true;
 }
+
+
 // 5.
 bool exportCityJSON(DCEL & D, const char *file_out) {
-  // to do
+    
+    // Create map of DCEL Vertex pointers to their IDs for export
+    // and reverse map of export IDs to the Vertex pointers
+    // CityJSON vertex IDs start at 0
+    std::map<Vertex*, int> vmap;
+    std::map<int, Vertex*> rvmap;
+    int v_index = 0;
+    for (const auto& v : D.vertices()) {
+        vmap.insert({ v.get(), v_index });
+        rvmap.insert({ v_index, v.get() });
+        v_index++;
+    }
+
+    // Open the file, write a generic CityJSON header
+    std::cout << "Writing to file: " << file_out << "\n";
+    std::ofstream file;
+    file.open(file_out);
+    file <<
+        "{"
+        "   \"type\":\"CityJSON\","
+        "   \"version\":\"1.0\","
+        "   \"CityObjects\":"
+            "{";
+
+    // Add CityObject for each separate mesh
+    // For now just a single "building" to test
+    int n_buildings = 1;
+    for (int i = 0; i < n_buildings; i++) {
+
+        if (i > 0) file << ","; // Add comma in between
+
+        file <<
+            "\"Building " << i << "\": {"
+            "   \"type\": \"Building\","
+            "   \"attributes\": {},"
+            "   \"geometry\":"
+            "   [{"
+            "       \"type\": \"MultiSurface\","
+            "       \"boundaries\": [";
+
+        // Add surface for each face
+        bool first = true;
+        for (const auto& f : D.faces()) {
+
+            if (!first) file << ","; // Add comma in between
+            first = false;
+
+            file << "[";
+            
+            // Exterior surface boundary
+            file << "[";
+            HalfEdge* e = f->exteriorEdge;
+            const HalfEdge* start = e;
+            while (true) {
+                int v_index = vmap[e->origin];
+                file << v_index;
+                e = e->next;
+                if (e == start) break;
+                file << ", ";
+            }
+            file << "]";
+
+            // Interior surface boundaries
+            for (const auto& hole : f->holes)
+            {
+                file << ",[";
+                HalfEdge* e = hole;
+                const HalfEdge* start = e;
+                while (true) {
+                    int v_index = vmap[e->origin];
+                    file << v_index;
+                    e = e->next;
+                    if (e == start) break;
+                    file << ",";
+                }
+                file << "]";
+            }
+
+            file << "]";   // end one surface
+        }
+
+        // Close geometry and the whole building object
+        file <<
+            "       ]"  // boundaries
+            "   }]"     // geometry
+            "}";        // Building
+    }
+    // Close CityObjects and start with "vertices"
+    file <<
+        "},"
+        "\"vertices\": [";
+
+    char buffer[64];
+    for (int i = 0; i < rvmap.size(); i++) {
+        if (i > 0) file << ","; // Add comma in between
+        Vertex* v = rvmap[i];
+        sprintf(buffer, "[%f, %f, %f]",
+                v->x, v->y, v->z);
+        file << buffer;
+    }
+
+    // Close "vertices"
+    file << "   ]";
+    // Close the CityJSON object and the file itself
+    file << "}";
+    file.close();
 
     return true;
 }
 
 
-int main(int argc, const char * argv[]) {
-  const char *file_in = "E:\\TU_Delft\\yr_1\\q3\\GEO1004\\Assignment\\hw02\\GEO1004-hw2\\data\\cube_soup.obj";
-  const char *file_out = "cube_out.json";
 
-  // Demonstrate how to use the DCEL to get you started (see function implementation below)
-  // you can remove this from the final code
-  // DemoDCEL();
+int main(int argc, const char * argv[]) {
+  const char *file_in = "cube_soup.obj";
+  const char *file_out = "cube_out.json";
 
   // create an empty DCEL
   DCEL D;
@@ -317,7 +335,6 @@ int main(int argc, const char * argv[]) {
       std::cerr << "File export failed.\n";
       return 5;
   };
-
 
   return 0;
 }
