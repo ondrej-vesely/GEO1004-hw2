@@ -24,7 +24,7 @@ bool testDCEL(DCEL& D);
 */
 
 // Get a vector of all half edges forming the face
-std::vector<HalfEdge*> faceEdges(Face*& f) {
+std::vector<HalfEdge*> faceEdges(Face* f) {
     std::vector<HalfEdge*> halfEdges;
     HalfEdge* e = f->exteriorEdge;
     const HalfEdge* e_start = e;
@@ -38,7 +38,7 @@ std::vector<HalfEdge*> faceEdges(Face*& f) {
 }
 
 // Flip halfedges direction
-void flipEdge(HalfEdge*& e) {
+void flipEdge(HalfEdge* e) {
     Vertex* origin = e->origin;
     HalfEdge* prev = e->prev;
     e->origin = e->destination;
@@ -48,7 +48,7 @@ void flipEdge(HalfEdge*& e) {
 }
 
 // Flip all halfedges of the face
-void flipFace(Face*& f) {
+void flipFace(Face* f) {
     for (auto e : faceEdges(f)) {
         flipEdge(e);
     }
@@ -59,19 +59,21 @@ void orientFaces(Face* face) {
     std::stack<Face*> stack;
     std::set<Face*> visited;
     stack.push(face);
+    visited.insert(face);
 
     while (!stack.empty()) 
     {
         Face* f = stack.top();
-        visited.insert(f);
         stack.pop();
 
-        for (const auto e : faceEdges(f)) {
+        for (auto e : faceEdges(f)) {
             if (visited.count(e->twin->incidentFace) == 0) {
                 stack.push(e->twin->incidentFace);
-            }
-            if (e->origin == e->twin->origin) {
-                flipFace(e->twin->incidentFace);
+                visited.insert(f);
+                
+                if (e->origin == e->twin->origin) {
+                    flipFace(e->twin->incidentFace);
+                }
             }
         }
     }
@@ -192,130 +194,57 @@ bool importOBJ(DCEL & D, const char *file_in) {
 
 
 // 2.
-bool groupTriangles(DCEL & D) {
-    // to do
+bool groupTriangles(DCEL & D, std::map<Face*, int> & facemap) {
 
+    // Keep track of visited / unvisited faces
+    std::map< Face*, int> visited;
+    for (const auto & f : D.faces())
+    {
+        visited.insert({ f.get(), 0 });
+    }
 
+    std::stack<Face*> stack;
+    int current_id = 1;
+    bool done = false;
+    
+    while (!done) {
+        done = true;
+        
+        // Check if there is some unvisited face
+        Face* start;
+        for (auto& f : visited) {
+            if (f.second == 0) {
+                start = f.first;
+                done = false;
+                break;
+            }
+        }
+
+        // Add it to stack and infinite face holes
+        stack.push(start);
+        D.infiniteFace()->holes.push_back(start->exteriorEdge);
+
+        while (!stack.empty())
+        {
+            Face* f = stack.top();
+            stack.pop();
+            visited[f] = current_id;
+
+            for (auto e : faceEdges(f)) {
+                if (visited[e->twin->incidentFace] == 0) {
+                    stack.push(e->twin->incidentFace);
+                }
+            }
+        }
+
+        // Increase current ID and try again
+        current_id++; 
+    }
+
+    facemap = visited;
     return true;
 }
 
-    /*
-    * //, std::unordered_map< HalfEdge*, std::vector<int> > &hemap,  std::unordered_map< Face*, int> &facemap)
-    
-    //std::vector<int> meshes;
-    // create a hashmap with the halfedge and an integer
-    std::unordered_map < HalfEdge*, int> meshmap;
-
-
-    std::unordered_map<HalfEdge*, std::vector<int>> half_edge_map;
-    std::unordered_map<Face*, int> face_map;
-
-    for( auto & edge : half_edge_map)
-    {
-        meshmap.insert({edge.first ,0});
-    }
-
-    for( auto & f : face_map)
-    {
-        face_map.insert({f.first,0});
-    }
-
-    // buildings in .obj start at 1
-    int build_feature = 1; //building feature
-    bool edge_map_finish = false;
-    // Until edge map is filled, continue finding not-yet-assigned halfedges that belong to triangles, that belong to meshes
-    // Use stack tool to iterate through all edges of mesh
-    // Get a halfedge that has not been assigned to a mesh
-
-    while(edge_map_finish == false)
-    {
-        //get a halfedge that has not been assigned to a mesh
-        HalfEdge* edg;
-        std::unordered_map <HalfEdge*, int>::iterator iter = meshmap.begin();
-        while (iter != meshmap.end())
-        {
-            if (iter->second == 0)
-            {
-                edg = iter->first; //to push to stack
-            }
-            iter++;
-        } // end reading meshmap
-
-        //start the stack to go through all edges of a mesh
-        std::stack<HalfEdge*> stk;
-        stk.push(edg); // push to stack
-
-        // store the edge into the list of holes of the infinite face
-        D.infiniteFace()->holeshol.push_back(edg);
-        //traverse all the faces to get all meshes
-        while(!stk.empty())
-        {
-            HalfEdge* e = stk.top();
-            //std::cout << &e << std::endl;
-            stk.pop();
-            face_map[e->incidentFace] = build_feature;
-
-            HalfEdge* e_start = e;
-            do {
-                meshmap[e] = 1;
-                if(meshmap[e->twin] == 0)
-                {
-                    stk.push(e->twin);
-                }
-                e = e->next;
-            } while ( e_start!=e) ;
-        }
-        build_feature ++;
-        int ir =0;
-        // you stop when you traversed all the edges
-        for(auto c: meshmap)
-        {
-            if(c.second ==0)
-            {
-                ir ++;
-            }
-        }
-        // stop the loop, you have found all meshes
-        if(ir == 0)
-        {
-            edge_map_finish = true;
-        }
-    }
-    */
-    /*
-    bool groupTriangles(DCEL & D) {
-        // to do
-        const auto& vertices = D.vertices();
-        const auto& halfEdges = D.halfEdges();
-        const auto& faces = D.faces();
-        std::vector<double> norml, norm2;
-        std::cout<< "printing dfaces" <<D.faces().begin()->get()<<'\n';
-        for (const auto &f : faces)
-        {
-            // take vertices from face
-            HalfEdge* currentedge = f->exteriorEdge;
-            HalfEdge* nxtedge = f->exteriorEdge->next;
-            HalfEdge* nxtnxtedge = f->exteriorEdge->prev;
-
-            Vertex* v0 = currentedge->origin;
-            Vertex* v1 = currentedge->destination;
-            Vertex* v2 = nxtedge->destination;
-            //compute normal for this face
-            norml = normal_calc(v0,v1,v2);
-
-            std::cout<<"incd \t"<<currentedge->incidentFace<<'\t'<<nxtedge->incidentFace<<'\t'<<nxtnxtedge->incidentFace<<'\n';
-            std::cout<<"twin \t"<<currentedge->twin->incidentFace<<'\t'<<nxtedge->twin->incidentFace<<'\t'<<nxtnxtedge->twin->incidentFace<<'\n';
-    //
-    //        Vertex* otherv0 = f->exteriorEdge->twin->origin;
-    //        Vertex* otherv1 = f->exteriorEdge->twin->destination;
-    //        Vertex* otherv2 = f->exteriorEdge->twin->next->destination;
-    //        norm2 = normal_calc(otherv0,otherv1,otherv2);
-
-    //        std::cout<<"n1 \t"<<norml.size()<<"\nn2 \t"<<norm2.size()<<'\n';
-        }
-
-
-    */
 
 // 3.
 bool orientMeshes(DCEL & D) {
@@ -452,51 +381,59 @@ bool exportCityJSON(DCEL & D, const char *file_out) {
 
 
 
-int main(int argc, const char * argv[]) {
-  const char *file_in = "cube_soup.obj";
-  const char *file_out = "cube_out.json";
+int main(int argc, const char* argv[]) {
+	const char* file_in = "bk_soup.obj";
+	const char* file_out = "bk_out.json";
 
-  // create an empty DCEL
-  DCEL D;
+	// create an empty DCEL
+	DCEL D;
+    // map holding face object ids
+    std::map<Face*, int> facemap;
 
-  // 1. read the triangle soup from the OBJ input file and convert it to the DCEL,
-  if (!importOBJ(D, file_in) || !testDCEL(D))
-  {
-      std::cerr << "File import failed.\n";
-      return 1;
-  };
-  
-  // 2. group the triangles into meshes,
-  if (!groupTriangles(D) || !testDCEL(D))
-  {
-      std::cerr << "Triangle grouping failed.\n";
-      return 2;
-  };
-  
-  // 3. determine the correct orientation for each mesh and ensure all its triangles 
-  //    are consistent with this correct orientation (ie. all the triangle normals 
-  //    are pointing outwards).
-  if (!orientMeshes(D) || !testDCEL(D))
-  {
-      std::cerr << "Orientation check failed.\n";
-      return 3;
-  };
 
-  // 4. merge adjacent triangles that are co-planar into larger polygonal faces.
-  if (!mergeCoPlanarFaces(D) || !testDCEL(D))
-  {
-      std::cerr << "Co-planar face merge failed.\n";
-      return 4;
-  };
+	// 1. read the triangle soup from the OBJ input file and convert it to the DCEL,
+	if (!importOBJ(D, file_in) || !testDCEL(D))
+	{
+		std::cerr << "File import failed.\n";
+		return 1;
+	};
 
-  // 5. write the meshes with their faces to a valid CityJSON output file.
-  if (!exportCityJSON(D, file_out))
-  {
-      std::cerr << "File export failed.\n";
-      return 5;
-  };
+	// 2. group the triangles into meshes,
+	if (!groupTriangles(D, facemap) || !testDCEL(D))
+	{
+		std::cerr << "Triangle grouping failed.\n";
+		return 2;
+	};
 
-  return 0;
+    for (auto& f : facemap)
+    {
+        std::cout << f.second << "\n";
+    }
+
+	// 3. determine the correct orientation for each mesh and ensure all its triangles 
+	//    are consistent with this correct orientation (ie. all the triangle normals 
+	//    are pointing outwards).
+	if (!orientMeshes(D) || !testDCEL(D))
+	{
+		std::cerr << "Orientation check failed.\n";
+		return 3;
+	};
+
+	// 4. merge adjacent triangles that are co-planar into larger polygonal faces.
+	if (!mergeCoPlanarFaces(D) || !testDCEL(D))
+	{
+		std::cerr << "Co-planar face merge failed.\n";
+		return 4;
+	};
+
+	// 5. write the meshes with their faces to a valid CityJSON output file.
+	if (!exportCityJSON(D, file_out))
+	{
+		std::cerr << "File export failed.\n";
+		return 5;
+	};
+
+	return 0;
 }
 
 
