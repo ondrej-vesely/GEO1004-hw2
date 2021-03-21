@@ -1,11 +1,17 @@
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <list>
+#include <map>
+#include <string>
+
+
 #include "DCEL.hpp"
 
 // forward declarations; these functions are given below main()
 void DemoDCEL();
 void printDCEL(DCEL & D);
+bool testDCEL(DCEL& D);
 
 
 /* 
@@ -15,7 +21,13 @@ void printDCEL(DCEL & D);
 */
 // 1.
 bool importOBJ(DCEL & D, const char *file_in) {
+    
+    // Create map of OBJ vertex IDs to DCEL Vertex pointers
+    // OBJ vertex IDs start at 1
+    std::map<int, Vertex*> vmap;
+    int v_index = 1;
 
+    // Open the input file
     std::cout << "Reading file: " << file_in << "\n";
     std::ifstream infile(file_in, std::ifstream::in);
     if (!infile)
@@ -24,7 +36,60 @@ bool importOBJ(DCEL & D, const char *file_in) {
         return false;
     }
 
+    // Iterate line by line
+    std::string line;
+    while (std::getline(infile, line))
+    {
+        if (line.substr(0, 2) == "v ")                  // Vertices
+        {
+            std::istringstream coords(line.substr(2));
+            double x, y, z;    coords >> x; coords >> y; coords >> z;
+            
+            Vertex* v = D.createVertex(x, y, z);
+            vmap.insert({ v_index, v });
+            v_index++;
+        } 
+        else if (line.substr(0, 2) == "f ")             // Faces
+        {
+            std::istringstream ids(line.substr(2));
+            int v0, v1, v2;    ids >> v0; ids >> v1; ids >> v2;
+            
+            HalfEdge* e0 = D.createHalfEdge();
+            HalfEdge* e1 = D.createHalfEdge();
+            HalfEdge* e2 = D.createHalfEdge();
+            Face* f0 = D.createFace();
+
+            e0->origin = vmap[v0];
+            e0->destination = vmap[v1];
+            e0->next = e1;
+            e0->prev = e2;
+            e0->incidentFace = f0;
+
+            e1->origin = vmap[v1];
+            e1->destination = vmap[v2];
+            e1->next = e2;
+            e1->prev = e0;
+            e1->incidentFace = f0;
+
+            e2->origin = vmap[v2];
+            e2->destination = vmap[v0];
+            e2->next = e0;
+            e2->prev = e1;
+            e2->incidentFace = f0;
+
+            f0->exteriorEdge = e0;
+        }
+    }
+
+    // Close the input file
     infile.close();
+
+    // Check validity
+    if (!testDCEL(D))
+    {
+        std::cerr << "Invalid DCEL generated.\n";;
+        return false;
+    }
 
     return true;
 }
@@ -71,6 +136,8 @@ int main(int argc, const char * argv[]) {
       std::cerr << "File import failed.\n";
       return 1;
   };
+
+  printDCEL(D);
   
   // 2. group the triangles into meshes,
   if (!groupTriangles(D))
@@ -107,37 +174,46 @@ int main(int argc, const char * argv[]) {
 }
 
 
+
+bool testDCEL(DCEL& D) {
+
+    // Quick check if there is an invalid element
+    auto element = D.findInValid();
+    if (element == nullptr) {
+        // Beware that a 'valid' DCEL here only means there are no dangling links and no elimated elements.
+        // There could still be problems like links that point to the wrong element.
+        std::cout << "DCEL is valid\n";
+        return true;
+    }
+    else {
+        std::cout << "DCEL is NOT valid ---> ";
+        std::cout << *element << "\n";
+        return false;
+    }
+}
+
+
 void printDCEL(DCEL & D) {
 
-  // Quick check if there is an invalid element
-  auto element = D.findInValid();
-  if ( element == nullptr ) {
-    // Beware that a 'valid' DCEL here only means there are no dangling links and no elimated elements.
-    // There could still be problems like links that point to the wrong element.
-    std::cout << "DCEL is valid\n";
-  } else {
-    std::cout << "DCEL is NOT valid ---> ";
-    std::cout << *element << "\n";
-  }
+    testDCEL(D);
 
-  // iterate all elements of the DCEL and print the info for each element
-  const auto & vertices = D.vertices();
-  const auto & halfEdges = D.halfEdges();
-  const auto & faces = D.faces();
-  std::cout << "DCEL has:\n";
-  std::cout << " " << vertices.size() << " vertices:\n";
-  for ( const auto & v : vertices ) {
-    std::cout << "  * " << *v << "\n";
-  }
-  std::cout << " " << halfEdges.size() << " half-edges:\n";
-  for ( const auto & e : halfEdges ) {
-    std::cout << "  * " << *e << "\n";
-  }
-  std::cout << " " << faces.size() << " faces:\n";
-  for ( const auto & f : faces ) {
-    std::cout << "  * " << *f << "\n";
-  }
-
+	// iterate all elements of the DCEL and print the info for each element
+	const auto& vertices = D.vertices();
+	const auto& halfEdges = D.halfEdges();
+	const auto& faces = D.faces();
+	std::cout << "DCEL has:\n";
+	std::cout << " " << vertices.size() << " vertices:\n";
+	for (const auto& v : vertices) {
+		std::cout << "  * " << *v << "\n";
+	}
+	std::cout << " " << halfEdges.size() << " half-edges:\n";
+	for (const auto& e : halfEdges) {
+		std::cout << "  * " << *e << "\n";
+	}
+	std::cout << " " << faces.size() << " faces:\n";
+	for (const auto& f : faces) {
+		std::cout << "  * " << *f << "\n";
+	}
 }
 
 
