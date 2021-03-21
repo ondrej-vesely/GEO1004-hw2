@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <list>
 #include "DCEL.hpp"
 
@@ -13,49 +14,94 @@ void printDCEL(DCEL & D);
   After each function you should have a DCEL without invalid elements!
 */
 // 1.
-void importOBJ(DCEL & D, const char *file_in) {
-  // to do
+bool importOBJ(DCEL & D, const char *file_in) {
+
+    std::cout << "Reading file: " << file_in << "\n";
+    std::ifstream infile(file_in, std::ifstream::in);
+    if (!infile)
+    {
+        std::cerr << "Input file not found.\n";;
+        return false;
+    }
+
+    infile.close();
+
+    return true;
 }
 // 2.
-void groupTriangles(DCEL & D) {
+bool groupTriangles(DCEL & D) {
   // to do
+
+    return true;
 }
 // 3.
-void orientMeshes(DCEL & D) {
+bool orientMeshes(DCEL & D) {
   // to do
+
+    return true;
 }
 // 4.
-void mergeCoPlanarFaces(DCEL & D) {
+bool mergeCoPlanarFaces(DCEL & D) {
   // to do
+
+    return true;
 }
 // 5.
-void exportCityJSON(DCEL & D, const char *file_out) {
+bool exportCityJSON(DCEL & D, const char *file_out) {
   // to do
+
+    return true;
 }
 
 
 int main(int argc, const char * argv[]) {
-  const char *file_in = "bk_soup.obj";
-  const char *file_out = "bk.json";
+  const char *file_in = "cube_soup.obj";
+  const char *file_out = "cube_out.json";
 
   // Demonstrate how to use the DCEL to get you started (see function implementation below)
   // you can remove this from the final code
-  DemoDCEL();
+  // DemoDCEL();
 
   // create an empty DCEL
   DCEL D;
 
   // 1. read the triangle soup from the OBJ input file and convert it to the DCEL,
+  if (!importOBJ(D, file_in)) 
+  {
+      std::cerr << "File import failed.\n";
+      return 1;
+  };
   
   // 2. group the triangles into meshes,
+  if (!groupTriangles(D))
+  {
+      std::cerr << "Triangle grouping failed.\n";
+      return 2;
+  };
   
   // 3. determine the correct orientation for each mesh and ensure all its triangles 
   //    are consistent with this correct orientation (ie. all the triangle normals 
   //    are pointing outwards).
-  
+  if (!orientMeshes(D))
+  {
+      std::cerr << "Orientation check failed.\n";
+      return 3;
+  };
+
   // 4. merge adjacent triangles that are co-planar into larger polygonal faces.
-  
+  if (!mergeCoPlanarFaces(D))
+  {
+      std::cerr << "Co-planar face merge failed.\n";
+      return 4;
+  };
+
   // 5. write the meshes with their faces to a valid CityJSON output file.
+  if (!exportCityJSON(D, file_out))
+  {
+      std::cerr << "File export failed.\n";
+      return 5;
+  };
+
 
   return 0;
 }
