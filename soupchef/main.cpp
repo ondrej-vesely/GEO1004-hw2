@@ -9,7 +9,7 @@
 #include <stack>
 #include <string>
 
-
+#include "Point.h"
 #include "DCEL.hpp"
 
 // forward declarations; these functions are given below main()
@@ -81,25 +81,107 @@ void orientFaces(Face* face) {
 }
 
 
-//get normal given 2 vertices
-std::vector<double>  normal_calc(Vertex* v0, Vertex* v1, Vertex* v2)
+float signed_volume(const Point& a, const Point& b, const Point& c, const Point& d)
 {
-    double delx1 =v2->x - v0->x;
+    // 1/6 * dot(a-d, cross(b-d, c-d)), ditch the 1/6, we need sign only
+    Point
+        ad = a - d,
+        bd = b - d,
+        cd = c - d;
+    return ad.dot(bd.cross(cd));
+}
+
+
+bool is_opposite(const Point& a, const Point& b, const Point& v0, const Point& v1, const Point& v2)
+{
+    // signed volume multiple will be negative if the points are on the opposite sides
+    return (0 > signed_volume(v0, v1, v2, a) * signed_volume(v0, v1, v2, b));
+}
+
+
+bool intersects(const Point& orig, const Point& dest, const Point& v0, const Point& v1, const Point& v2)
+{
+    // endpoints of the line are on opposite sides of the triangle
+    // and three planes passing through the line and each vertex 
+    // of the triangle have the two other vertices on opposite sides
+    return (
+        is_opposite(orig, dest, v0, v1, v2)
+        && is_opposite(v0, v1, orig, dest, v2)
+        && is_opposite(v1, v2, orig, dest, v0)
+        );
+}
+
+bool intersects(const Point& orig, const Point& dest, const Face* f)
+{
+    Vertex* v_0 = f->exteriorEdge->origin;
+    Vertex* v_1 = f->exteriorEdge->next->origin;
+    Vertex* v_2 = f->exteriorEdge->prev->origin;
+    Point v0{ v_0->x, v_0->y, v_0->z };
+    Point v1{ v_1->x, v_1->y, v_1->z };
+    Point v2{ v_2->x, v_2->y, v_2->z };
+    return intersects(orig, dest, v0, v1, v2);
+}
+
+// Get normal given 2 vertices
+Point normal_vect(Vertex* v0, Vertex* v1, Vertex* v2)
+{
+    double delx1 = v2->x - v0->x;
     double dely1 = v2->y - v0->y;
     double delz1 = v2->z - v0->z;
 
-    double delx2 =v1->x - v0->x;
+    double delx2 = v1->x - v0->x;
     double dely2 = v1->y - v0->y;
     double delz2 = v1->z - v0->z;
 
-    //do a cross product
+    // do a cross product
     double vx = dely1 * delz2 - delz1  * dely2;
     double vy = delz1 * delx2 - delx1  * delz2;
     double vz = delx1 * dely2 - dely1  * delx2;
-//    normalise vector
+    
+    // normalise vector
     double retx = vx / sqrt(vx*vx + vy*vy + vz*vz), rety = vy/ sqrt(vx*vx + vy*vy + vz*vz),retz = vz / sqrt(vx*vx + vy*vy + vz*vz);
-    return std::vector<double> {retx,rety,retz};
+    
+    return Point{retx, rety, retz};
 }
+
+Point normal_vect(Face* f)
+{
+    Vertex* v0 = f->exteriorEdge->origin;
+    Vertex* v1 = f->exteriorEdge->next->origin;
+    Vertex* v2 = f->exteriorEdge->prev->origin;
+    return normal_vect(v0, v1, v2);
+}
+
+// Distance between points
+double distance(Point a, Point b) {
+    return sqrt((b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y) + (b.z - a.z) * (b.z - a.z));
+}
+
+
+Point face_center(Vertex* v0, Vertex* v1, Vertex* v2)
+{
+    double x = v0->x + v1->x + v2->x;
+    double y = v0->y + v1->y + v2->y;
+    double z = v0->z + v1->z + v2->z;
+
+    return Point{ x / 3, y / 3, z / 3 };
+}
+
+Point face_center(Face* f)
+{
+    Vertex* v0 = f->exteriorEdge->origin;
+    Vertex* v1 = f->exteriorEdge->next->origin;
+    Vertex* v2 = f->exteriorEdge->prev->origin;
+    return face_center(v0, v1, v2);
+}
+
+Point normal_ray(Face* f, double multiple) {
+    auto f_norm = normal_vect(f);
+    auto f_center = face_center(f);
+    Point ray_dest = f_center + f_norm * multiple;
+    return ray_dest;
+}
+
 
 
 /*
@@ -195,9 +277,10 @@ bool importOBJ(DCEL & D, const char *file_in) {
 bool groupTriangles(DCEL & D, std::map<Face*, int> & facemap) {
 
     // Keep track of visited (n) / unvisited (0) faces
+    std::map<Face*, int> visited;
     for (const auto & f : D.faces())
     {
-        facemap.insert({ f.get(), 0 });
+        visited.insert({ f.get(), 0 });
     }
 
     std::stack<Face*> stack;
@@ -209,7 +292,7 @@ bool groupTriangles(DCEL & D, std::map<Face*, int> & facemap) {
         
         // Check if there is some unvisited face
         Face* start;
-        for (auto& f : facemap) {
+        for (auto& f : visited) {
             if (f.second == 0) {
                 start = f.first;
                 done = false;
@@ -225,10 +308,10 @@ bool groupTriangles(DCEL & D, std::map<Face*, int> & facemap) {
         {
             Face* f = stack.top();
             stack.pop();
-            facemap[f] = current_id;
+            visited[f] = current_id;
 
             for (auto e : faceEdges(f)) {
-                if (facemap[e->twin->incidentFace] == 0) {
+                if (visited[e->twin->incidentFace] == 0) {
                     stack.push(e->twin->incidentFace);
                 }
             }
@@ -237,16 +320,53 @@ bool groupTriangles(DCEL & D, std::map<Face*, int> & facemap) {
         current_id++; 
     }
 
+    facemap = visited;
     return true;
 }
 
 
 // 3.
-bool orientMeshes(DCEL & D) {
-  // to do
+bool orientMeshes(DCEL & D, std::map<Face*, int>& facemap) {
 
+    // For each separate mesh
     for (const auto& e : D.infiniteFace()->holes) {
-        orientFaces(e->incidentFace);
+       
+        // Get its first face that we can get
+        Face* first = e->incidentFace;
+        int mesh_id = facemap[first];
+
+        // Shoot a ray along the face normal
+        Point ray_orig = face_center(first);
+        Point ray_dest = normal_ray(first, 10000);
+
+        // For each face in mesh check for intersection
+        // To find the furthes possible one
+        Face* best = first;
+        double best_dist = 0;
+        for (const auto& f : D.faces())
+        {
+            if (facemap[f.get()] != mesh_id) continue;
+            if (intersects(ray_orig, ray_dest, f.get()))
+            {
+                Point center = face_center(f.get());
+                double dist = distance(center, ray_dest);
+
+                if (dist > best_dist) {
+                    best = f.get();
+                    best_dist = dist;
+                }
+            }
+        }
+
+        // Figure out if normal doesn't point away from ray_dest
+        if (distance(face_center(best), ray_dest) >
+            distance(normal_ray(best, 1), ray_dest))
+        {
+            flipFace(best); // and flip if it does
+        }
+
+        // Recursively flip the rest based on the face
+        orientFaces(best);
     }
 
     return true;
@@ -384,7 +504,7 @@ int main(int argc, const char* argv[]) {
 
 	// create an empty DCEL
 	DCEL D;
-    // map holding face object ids
+    // empty map for group ids per face
     std::map<Face*, int> facemap;
 
 
@@ -395,7 +515,7 @@ int main(int argc, const char* argv[]) {
 		return 1;
 	};
 
-	// 2. group the triangles into meshes,
+	// 2. group the triangles into meshes, store in facemap
 	if (!groupTriangles(D, facemap) || !testDCEL(D))
 	{
 		std::cerr << "Triangle grouping failed.\n";
@@ -405,7 +525,7 @@ int main(int argc, const char* argv[]) {
 	// 3. determine the correct orientation for each mesh and ensure all its triangles 
 	//    are consistent with this correct orientation (ie. all the triangle normals 
 	//    are pointing outwards).
-	if (!orientMeshes(D) || !testDCEL(D))
+	if (!orientMeshes(D, facemap) || !testDCEL(D))
 	{
 		std::cerr << "Orientation check failed.\n";
 		return 3;
@@ -437,7 +557,6 @@ bool testDCEL(DCEL& D) {
     if (element == nullptr) {
         // Beware that a 'valid' DCEL here only means there are no dangling links and no elimated elements.
         // There could still be problems like links that point to the wrong element.
-        std::cout << "DCEL is valid\n";
         return true;
     }
     else {
