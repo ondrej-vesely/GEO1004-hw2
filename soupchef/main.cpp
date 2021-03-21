@@ -133,11 +133,14 @@ bool mergeCoPlanarFaces(DCEL & D) {
 bool exportCityJSON(DCEL & D, const char *file_out) {
     
     // Create map of DCEL Vertex pointers to their IDs for export
+    // and reverse map of export IDs to the Vertex pointers
     // CityJSON vertex IDs start at 0
     std::map<Vertex*, int> vmap;
+    std::map<int, Vertex*> rvmap;
     int v_index = 0;
     for (const auto& v : D.vertices()) {
         vmap.insert({ v.get(), v_index });
+        rvmap.insert({ v_index, v.get() });
         v_index++;
     }
 
@@ -214,8 +217,8 @@ bool exportCityJSON(DCEL & D, const char *file_out) {
         "\"vertices\": [";
 
     char buffer[64];
-    for (const auto& v_ : vmap) {
-        Vertex* v = v_.first;
+    for (int i = 0; i < rvmap.size(); i++) {
+        Vertex* v = rvmap[i];
         sprintf(buffer, "[%f, %f, %f],",
                 v->x, v->y, v->z);
         file << buffer;
