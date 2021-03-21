@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <vector>
 #include <list>
 #include <map>
 #include <string>
@@ -58,7 +59,7 @@ bool importOBJ(DCEL & D, const char *file_in) {
             HalfEdge* e1 = D.createHalfEdge();
             HalfEdge* e2 = D.createHalfEdge();
             Face* f0 = D.createFace();
-
+            
             e0->origin = vmap[v0];
             e0->destination = vmap[v1];
             e0->next = e1;
@@ -83,6 +84,22 @@ bool importOBJ(DCEL & D, const char *file_in) {
 
     // Close the input file
     infile.close();
+
+    // Loop trough DCEL to assign correct twin edges
+    for (const auto& he1 : D.halfEdges()) {
+        for (const auto& he2 : D.halfEdges()) {
+
+            if ((he1 != he2) && (
+                    (he1->origin == he2->origin && he1->destination == he2->destination) ||
+                    (he1->destination == he2->origin && he1->origin == he2->destination)
+                )
+            ){
+                he1->twin = he2.get();
+                he2->twin = he1.get();
+                break;
+            }
+        }
+    }
 
     return true;
 }
@@ -129,8 +146,6 @@ int main(int argc, const char * argv[]) {
       std::cerr << "File import failed.\n";
       return 1;
   };
-
-  printDCEL(D);
   
   // 2. group the triangles into meshes,
   if (!groupTriangles(D) || !testDCEL(D))
