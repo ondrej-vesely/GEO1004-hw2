@@ -84,13 +84,6 @@ bool importOBJ(DCEL & D, const char *file_in) {
     // Close the input file
     infile.close();
 
-    // Check validity
-    if (!testDCEL(D))
-    {
-        std::cerr << "Invalid DCEL generated.\n";;
-        return false;
-    }
-
     return true;
 }
 // 2.
@@ -131,7 +124,7 @@ int main(int argc, const char * argv[]) {
   DCEL D;
 
   // 1. read the triangle soup from the OBJ input file and convert it to the DCEL,
-  if (!importOBJ(D, file_in)) 
+  if (!importOBJ(D, file_in) || !testDCEL(D))
   {
       std::cerr << "File import failed.\n";
       return 1;
@@ -140,7 +133,7 @@ int main(int argc, const char * argv[]) {
   printDCEL(D);
   
   // 2. group the triangles into meshes,
-  if (!groupTriangles(D))
+  if (!groupTriangles(D) || !testDCEL(D))
   {
       std::cerr << "Triangle grouping failed.\n";
       return 2;
@@ -149,14 +142,14 @@ int main(int argc, const char * argv[]) {
   // 3. determine the correct orientation for each mesh and ensure all its triangles 
   //    are consistent with this correct orientation (ie. all the triangle normals 
   //    are pointing outwards).
-  if (!orientMeshes(D))
+  if (!orientMeshes(D) || !testDCEL(D))
   {
       std::cerr << "Orientation check failed.\n";
       return 3;
   };
 
   // 4. merge adjacent triangles that are co-planar into larger polygonal faces.
-  if (!mergeCoPlanarFaces(D))
+  if (!mergeCoPlanarFaces(D) || !testDCEL(D))
   {
       std::cerr << "Co-planar face merge failed.\n";
       return 4;
