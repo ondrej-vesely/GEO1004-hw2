@@ -206,7 +206,7 @@ bool groupTriangles(DCEL & D, std::map<Face*, int> & facemap) {
     std::stack<Face*> stack;
     int current_id = 1;
     bool done = false;
-    
+
     while (!done) {
         done = true;
         
@@ -236,7 +236,6 @@ bool groupTriangles(DCEL & D, std::map<Face*, int> & facemap) {
                 }
             }
         }
-
         // Increase current ID and try again
         current_id++; 
     }
@@ -268,7 +267,7 @@ bool mergeCoPlanarFaces(DCEL & D) {
 
 
 // 5.
-bool exportCityJSON(DCEL & D, const char *file_out) {
+bool exportCityJSON(DCEL& D, std::map<Face*, int>& facemap, const char* file_out) {
 
     // Create map of DCEL Vertex pointers to their IDs for export
     // and reverse map of export IDs to the Vertex pointers
@@ -295,10 +294,10 @@ bool exportCityJSON(DCEL & D, const char *file_out) {
 
     // Add CityObject for each separate mesh
     // For now just a single "building" to test
-    int n_buildings = 1;
-    for (int i = 0; i < n_buildings; i++) {
+    int n_buildings = D.infiniteFace()->holes.size();
+    for (int i = 1; i < n_buildings; i++) {
 
-        if (i > 0) file << ","; // Add comma in between
+        if (i > 1) file << ","; // Add comma in between
 
         file <<
             "\"Building " << i << "\": {"
@@ -313,7 +312,10 @@ bool exportCityJSON(DCEL & D, const char *file_out) {
         bool first = true;
         for (const auto& f : D.faces()) {
 
-            if (!first) file << ","; // Add comma in between
+            // Skip faces not belonging to this building
+            if (facemap[f.get()] != i) continue;
+
+            if (!first) file << ","; // Add comma in between surfaces
             first = false;
 
             file << "[";
@@ -405,11 +407,6 @@ int main(int argc, const char* argv[]) {
 		return 2;
 	};
 
-    for (auto& f : facemap)
-    {
-        std::cout << f.second << "\n";
-    }
-
 	// 3. determine the correct orientation for each mesh and ensure all its triangles 
 	//    are consistent with this correct orientation (ie. all the triangle normals 
 	//    are pointing outwards).
@@ -427,7 +424,7 @@ int main(int argc, const char* argv[]) {
 	};
 
 	// 5. write the meshes with their faces to a valid CityJSON output file.
-	if (!exportCityJSON(D, file_out))
+	if (!exportCityJSON(D, facemap, file_out))
 	{
 		std::cerr << "File export failed.\n";
 		return 5;
