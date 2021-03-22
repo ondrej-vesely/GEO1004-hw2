@@ -339,36 +339,24 @@ bool orientMeshes(DCEL & D, std::map<Face*, int>& facemap) {
 
         // Shoot a ray along the face normal
         Point ray_orig = face_center(first);
-        Point ray_dest = normal_ray(first, 1000);
+        Point ray_dest = normal_ray(first, 9999);
 
-        // For each face in mesh check for intersection
-        // to find the furthest intersection with the ray
-        Face* best = first;
-        double best_dist = 0;
+        // Check the number of intersections
+        int intersections = 0;
         for (const auto& f : D.faces())
         {
             if (facemap[f.get()] != mesh_id) continue;
+            if (f.get() == first) continue;
             if (intersects(ray_orig, ray_dest, f.get()))
             {
-                Point center = face_center(f.get());
-                double dist = distance(center, ray_orig);
-
-                if (dist > best_dist) {
-                    best = f.get();
-                    best_dist = dist;
-                }
+                intersections++;
             }
         }
-
-        // Figure out if normal doesn't point away from ray_dest
-        if (distance(face_center(best), ray_dest) >
-            distance(normal_ray(best, 1), ray_dest))
-        {
-            flipFace(best); // and flip if it does
-        }
+        // Correct orientation if even number of intersections happend
+        if (intersections % 2 == 0) flipFace(first);
 
         // Recursively flip the rest based on the face
-        orientFaces(best);
+        orientFaces(first);
     }
 
     return true;
